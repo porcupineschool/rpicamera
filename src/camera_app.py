@@ -7,7 +7,7 @@ Uses the legacy `picamera` (v1) library, for Raspberry Pi OS versions
 import io
 import os
 from datetime import datetime
-from tkinter import Tk, Frame, Label, Button, StringVar, messagebox
+from tkinter import Tk, Frame, Label, Button, Entry, StringVar, messagebox
 
 import numpy as np
 import picamera
@@ -42,6 +42,13 @@ class CameraApp:
         self.status_var = StringVar(value="Ready")
         Label(root, textvariable=self.status_var).pack(pady=(4, 8))
 
+        delay_row = Frame(root)
+        delay_row.pack(pady=(0, 4))
+
+        Label(delay_row, text="Delay (seconds):").pack(side="left", padx=(0, 5))
+        self.delay_var = StringVar(value="0")
+        Entry(delay_row, textvariable=self.delay_var, width=5).pack(side="left")
+
         button_row = Frame(root)
         button_row.pack(pady=(0, 8))
 
@@ -68,6 +75,26 @@ class CameraApp:
     def take_photo(self):
         if self.recording:
             return
+        try:
+            delay = int(self.delay_var.get())
+            if delay < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Invalid delay", "Enter a whole number of seconds (0 or more).")
+            return
+
+        self.photo_button.configure(state="disabled")
+        self.record_button.configure(state="disabled")
+        self._countdown(delay)
+
+    def _countdown(self, remaining):
+        if remaining > 0:
+            self.status_var.set(f"Taking photo in {remaining}...")
+            self.root.after(1000, self._countdown, remaining - 1)
+        else:
+            self._capture_photo()
+
+    def _capture_photo(self):
         filename = os.path.join(CAPTURE_DIR, f"photo_{timestamp()}.jpg")
         self.status_var.set("Capturing photo...")
         self.root.update_idletasks()
@@ -77,6 +104,9 @@ class CameraApp:
         except Exception as exc:
             messagebox.showerror("Capture failed", str(exc))
             self.status_var.set("Ready")
+        finally:
+            self.photo_button.configure(state="normal")
+            self.record_button.configure(state="normal")
 
     def toggle_recording(self):
         if not self.recording:
