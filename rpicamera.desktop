@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pi Camera Control
+Comment=Preview and capture photos/video with the Pi camera
+Exec=python3 src/camera_app.py
+Path=/home/pi/rpicamera
+Icon=camera-photo
+Terminal=false
+Categories=Utility;

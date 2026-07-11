@@ -59,6 +59,23 @@ files, convert them later on a machine with a working `ffmpeg` install:
 ffmpeg -r 30 -i video.h264 -c copy video.mp4
 ```
 
+## Desktop icon
+
+To launch the app by clicking an icon on the Pi's desktop instead of typing a
+command:
+
+```
+cp ~/rpicamera/rpicamera.desktop ~/Desktop/
+chmod +x ~/Desktop/rpicamera.desktop
+```
+
+Then, on the Pi's desktop, right-click the new icon and choose **"Trust"** (or
+similar wording, e.g. "Allow Launching") — Raspberry Pi OS requires this once
+per launcher file before it will run on double-click.
+
+If your Pi username isn't `pi`, edit the `Path=` line in
+`rpicamera.desktop` to match your actual home directory first.
+
 ## Workflow
 
 - Edit code on the Mac.
