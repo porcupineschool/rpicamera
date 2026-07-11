@@ -1,17 +1,22 @@
-"""Simple GUI to preview the Pi camera and capture photos/video."""
+"""Simple GUI to preview the Pi camera and capture photos/video.
 
+Uses the legacy `picamera` (v1) library, for Raspberry Pi OS versions
+(e.g. Raspbian Buster) that predate the picamera2/libcamera stack.
+"""
+
+import io
 import os
+import subprocess
 from datetime import datetime
 from tkinter import Tk, Frame, Label, Button, StringVar, messagebox
 
+import numpy as np
+import picamera
 from PIL import Image, ImageTk
-from picamera2 import Picamera2
-from picamera2.encoders import H264Encoder
-from picamera2.outputs import FfmpegOutput
 
 CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "captures")
 PREVIEW_SIZE = (640, 480)
-PREVIEW_INTERVAL_MS = 66  # ~15 fps
+PREVIEW_INTERVAL_MS = 100  # ~10 fps
 
 
 def timestamp():
@@ -25,14 +30,13 @@ class CameraApp:
 
         os.makedirs(CAPTURE_DIR, exist_ok=True)
 
-        self.picam2 = Picamera2()
-        self.video_config = self.picam2.create_video_configuration(main={"size": PREVIEW_SIZE})
-        self.still_config = self.picam2.create_still_configuration()
-        self.picam2.configure(self.video_config)
-        self.picam2.start()
+        self.camera = picamera.PiCamera()
+        self.camera.resolution = PREVIEW_SIZE
 
         self.recording = False
-        self.encoder = None
+        self.preview_job = None
+        self.raw_video_path = None
+        self.final_video_path = None
 
         self.preview_label = Label(root)
         self.preview_label.pack()
@@ -53,12 +57,15 @@ class CameraApp:
         self.update_preview()
 
     def update_preview(self):
-        frame = self.picam2.capture_array("main")
+        stream = io.BytesIO()
+        self.camera.capture(stream, format="rgb", use_video_port=True)
+        frame = np.frombuffer(stream.getvalue(), dtype=np.uint8)
+        frame = frame.reshape((PREVIEW_SIZE[1], PREVIEW_SIZE[0], 3))
         image = Image.fromarray(frame)
         photo = ImageTk.PhotoImage(image=image)
         self.preview_label.configure(image=photo)
         self.preview_label.image = photo  # keep a reference so it isn't garbage collected
-        self.root.after(PREVIEW_INTERVAL_MS, self.update_preview)
+        self.preview_job = self.root.after(PREVIEW_INTERVAL_MS, self.update_preview)
 
     def take_photo(self):
         if self.recording:
@@ -67,7 +74,7 @@ class CameraApp:
         self.status_var.set("Capturing photo...")
         self.root.update_idletasks()
         try:
-            self.picam2.switch_mode_and_capture_file(self.still_config, filename)
+            self.camera.capture(filename)
             self.status_var.set(f"Saved {os.path.basename(filename)}")
         except Exception as exc:
             messagebox.showerror("Capture failed", str(exc))
@@ -75,24 +82,44 @@ class CameraApp:
 
     def toggle_recording(self):
         if not self.recording:
-            filename = os.path.join(CAPTURE_DIR, f"video_{timestamp()}.mp4")
-            self.encoder = H264Encoder()
-            self.picam2.start_recording(self.encoder, FfmpegOutput(filename))
+            self.raw_video_path = os.path.join(CAPTURE_DIR, f"video_{timestamp()}.h264")
+            self.final_video_path = self.raw_video_path.replace(".h264", ".mp4")
+            if self.preview_job is not None:
+                self.root.after_cancel(self.preview_job)
+                self.preview_job = None
+            self.camera.start_recording(self.raw_video_path)
             self.recording = True
             self.record_button.configure(text="Stop Recording")
             self.photo_button.configure(state="disabled")
-            self.status_var.set(f"Recording to {os.path.basename(filename)}...")
+            self.status_var.set(f"Recording to {os.path.basename(self.raw_video_path)}...")
         else:
-            self.picam2.stop_recording()
+            self.camera.stop_recording()
             self.recording = False
             self.record_button.configure(text="Start Recording")
             self.photo_button.configure(state="normal")
-            self.status_var.set("Ready")
+            self.status_var.set("Converting video...")
+            self.root.update_idletasks()
+            self._remux_to_mp4()
+            self.status_var.set(f"Saved {os.path.basename(self.final_video_path)}")
+            self.update_preview()
+
+    def _remux_to_mp4(self):
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-r", "30", "-i", self.raw_video_path, "-c", "copy", self.final_video_path],
+                check=True,
+                capture_output=True,
+            )
+            os.remove(self.raw_video_path)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            messagebox.showerror("Conversion failed", f"Video saved as raw .h264 instead: {exc}")
 
     def on_close(self):
+        if self.preview_job is not None:
+            self.root.after_cancel(self.preview_job)
         if self.recording:
-            self.picam2.stop_recording()
-        self.picam2.stop()
+            self.camera.stop_recording()
+        self.camera.close()
         self.root.destroy()
 
 

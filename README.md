@@ -6,23 +6,33 @@ libcamera-compatible CSI camera): live preview, snap photos, record video.
 Runs on the Raspberry Pi only (it needs the camera hardware) — edit and review
 the code on your Mac, push to GitHub, then pull and run it on the Pi.
 
+This app targets **Raspbian Buster** and uses the legacy `picamera` (v1)
+library, since Buster predates the picamera2/libcamera stack. (If you ever
+reflash to a newer Raspberry Pi OS, switch to a picamera2-based version
+instead — ask if you need that variant.)
+
 ## One-time setup on the Raspberry Pi
 
-1. Make sure the camera is enabled and detected:
+1. Enable the camera interface:
    ```
-   libcamera-hello --list-cameras
+   sudo raspi-config
    ```
-   If nothing shows up, enable the camera interface with `sudo raspi-config`
-   (Interface Options > Camera) and reboot.
+   Go to **Interface Options > Camera > Enable**, then reboot.
 
-2. Install system packages (picamera2 and Tk are easiest to get via apt —
-   they don't always install cleanly with pip on Raspberry Pi OS):
+2. Confirm the camera is detected:
+   ```
+   vcgencmd get_camera
+   ```
+   You should see `supported=1 detected=1`.
+
+3. Install system packages (these are easiest to get via apt — they don't
+   always install cleanly with pip on Raspberry Pi OS):
    ```
    sudo apt update
-   sudo apt install -y python3-picamera2 python3-pil python3-tk ffmpeg
+   sudo apt install -y python3-picamera python3-pil python3-tk python3-numpy ffmpeg
    ```
 
-3. Clone this repo on the Pi:
+4. Clone this repo on the Pi:
    ```
    git clone https://github.com/porcupineschool/rpicamera.git
    cd rpicamera
