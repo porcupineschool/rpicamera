@@ -52,19 +52,23 @@ python3 src/camera_app.py
 
 Or open `src/camera_app.py` in Thonny and press Run.
 
-Use the "Shutter speed (ms, 0=auto)" field + Apply button to set a manual
-exposure time before shooting. Long shutter speeds slow the live preview
-down to match (physically, a 2-second exposure can't refresh 10 times a
-second), so preview responsiveness drops while a long exposure is active.
-Set it back to 0 and Apply to return to auto-exposure.
+The **Exposure** row has an Auto/Manual toggle and a slider:
+- In **Auto**, the slider is disabled and just acts as a live gauge, tracking
+  whatever shutter speed the camera's auto-exposure algorithm is currently
+  using (shown in milliseconds next to the slider).
+- Switching to **Manual** locks the exposure at whatever the slider reads at
+  that moment, then lets you drag it up/down — releasing the slider applies
+  the new value.
 
-Clicking Apply with a non-zero value briefly freezes the app (a few seconds,
-longer for longer exposures) while it lets the sensor adjust to the new
-exposure before locking it in — this is required for the shutter speed to
-actually take effect correctly, not a bug. Photos taken with a manual
-exposure are captured at the preview resolution (640x480) rather than full
-sensor resolution, since a full-resolution still capture would reset the
-manually fixed exposure.
+Long shutter speeds slow the live preview down to match (physically, a
+2-second exposure can't refresh 10 times a second), so preview responsiveness
+drops while a long manual exposure is active. Applying a manual value briefly
+freezes the app (a few seconds, longer for longer exposures) while it lets
+the sensor adjust to the new exposure before locking it in — this is required
+for the shutter speed to actually take effect correctly, not a bug. Photos
+taken with a manual exposure are captured at the preview resolution (640x480)
+rather than full sensor resolution, since a full-resolution still capture
+would reset the manually fixed exposure.
 
 Captured photos are saved as `.jpg` and videos as raw `.h264` in the
 `captures/` folder. `.h264` files play fine in VLC; if you need `.mp4`
