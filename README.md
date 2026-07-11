@@ -52,6 +52,12 @@ python3 src/camera_app.py
 
 Or open `src/camera_app.py` in Thonny and press Run.
 
+Use the "Shutter speed (ms, 0=auto)" field + Apply button to set a manual
+exposure time before shooting. Long shutter speeds slow the live preview
+down to match (physically, a 2-second exposure can't refresh 10 times a
+second), so preview responsiveness drops while a long exposure is active.
+Set it back to 0 and Apply to return to auto-exposure.
+
 Captured photos are saved as `.jpg` and videos as raw `.h264` in the
 `captures/` folder. `.h264` files play fine in VLC; if you need `.mp4`
 files, convert them later on a machine with a working `ffmpeg` install:

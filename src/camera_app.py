@@ -16,6 +16,7 @@ from PIL import Image, ImageTk
 CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "captures")
 PREVIEW_SIZE = (640, 480)
 PREVIEW_INTERVAL_MS = 100  # ~10 fps
+DEFAULT_FRAMERATE = 30
 
 
 def timestamp():
@@ -31,6 +32,7 @@ class CameraApp:
 
         self.camera = picamera.PiCamera()
         self.camera.resolution = PREVIEW_SIZE
+        self.camera.framerate = DEFAULT_FRAMERATE
 
         self.recording = False
         self.preview_job = None
@@ -48,6 +50,14 @@ class CameraApp:
         Label(delay_row, text="Delay (seconds):").pack(side="left", padx=(0, 5))
         self.delay_var = StringVar(value="0")
         Entry(delay_row, textvariable=self.delay_var, width=5).pack(side="left")
+
+        exposure_row = Frame(root)
+        exposure_row.pack(pady=(0, 4))
+
+        Label(exposure_row, text="Shutter speed (ms, 0=auto):").pack(side="left", padx=(0, 5))
+        self.shutter_var = StringVar(value="0")
+        Entry(exposure_row, textvariable=self.shutter_var, width=6).pack(side="left", padx=(0, 5))
+        Button(exposure_row, text="Apply", command=self.apply_exposure).pack(side="left")
 
         button_row = Frame(root)
         button_row.pack(pady=(0, 8))
@@ -107,6 +117,35 @@ class CameraApp:
         finally:
             self.photo_button.configure(state="normal")
             self.record_button.configure(state="normal")
+
+    def apply_exposure(self):
+        if self.recording:
+            messagebox.showerror("Cannot change exposure", "Stop recording before changing exposure settings.")
+            return
+        try:
+            shutter_ms = int(self.shutter_var.get())
+            if shutter_ms < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Invalid shutter speed", "Enter a whole number of milliseconds (0 for auto).")
+            return
+
+        try:
+            if shutter_ms == 0:
+                self.camera.shutter_speed = 0
+                self.camera.exposure_mode = "auto"
+                self.camera.framerate = DEFAULT_FRAMERATE
+                self.status_var.set("Exposure set to auto")
+            else:
+                shutter_us = shutter_ms * 1000
+                # framerate must be slow enough to allow this shutter speed
+                self.camera.framerate = min(DEFAULT_FRAMERATE, 1_000_000 / shutter_us)
+                self.camera.shutter_speed = shutter_us
+                self.camera.exposure_mode = "off"
+                self.status_var.set(f"Exposure set to {shutter_ms}ms (preview will update more slowly)")
+        except Exception as exc:
+            messagebox.showerror("Failed to set exposure", str(exc))
+            self.status_var.set("Ready")
 
     def toggle_recording(self):
         if not self.recording:
