@@ -6,7 +6,6 @@ Uses the legacy `picamera` (v1) library, for Raspberry Pi OS versions
 
 import io
 import os
-import subprocess
 from datetime import datetime
 from tkinter import Tk, Frame, Label, Button, StringVar, messagebox
 
@@ -35,8 +34,7 @@ class CameraApp:
 
         self.recording = False
         self.preview_job = None
-        self.raw_video_path = None
-        self.final_video_path = None
+        self.video_path = None
 
         self.preview_label = Label(root)
         self.preview_label.pack()
@@ -82,37 +80,22 @@ class CameraApp:
 
     def toggle_recording(self):
         if not self.recording:
-            self.raw_video_path = os.path.join(CAPTURE_DIR, f"video_{timestamp()}.h264")
-            self.final_video_path = self.raw_video_path.replace(".h264", ".mp4")
+            self.video_path = os.path.join(CAPTURE_DIR, f"video_{timestamp()}.h264")
             if self.preview_job is not None:
                 self.root.after_cancel(self.preview_job)
                 self.preview_job = None
-            self.camera.start_recording(self.raw_video_path)
+            self.camera.start_recording(self.video_path)
             self.recording = True
             self.record_button.configure(text="Stop Recording")
             self.photo_button.configure(state="disabled")
-            self.status_var.set(f"Recording to {os.path.basename(self.raw_video_path)}...")
+            self.status_var.set(f"Recording to {os.path.basename(self.video_path)}...")
         else:
             self.camera.stop_recording()
             self.recording = False
             self.record_button.configure(text="Start Recording")
             self.photo_button.configure(state="normal")
-            self.status_var.set("Converting video...")
-            self.root.update_idletasks()
-            self._remux_to_mp4()
-            self.status_var.set(f"Saved {os.path.basename(self.final_video_path)}")
+            self.status_var.set(f"Saved {os.path.basename(self.video_path)}")
             self.update_preview()
-
-    def _remux_to_mp4(self):
-        try:
-            subprocess.run(
-                ["ffmpeg", "-y", "-r", "30", "-i", self.raw_video_path, "-c", "copy", self.final_video_path],
-                check=True,
-                capture_output=True,
-            )
-            os.remove(self.raw_video_path)
-        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            messagebox.showerror("Conversion failed", f"Video saved as raw .h264 instead: {exc}")
 
     def on_close(self):
         if self.preview_job is not None:

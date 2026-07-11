@@ -29,8 +29,12 @@ instead — ask if you need that variant.)
    always install cleanly with pip on Raspberry Pi OS):
    ```
    sudo apt update
-   sudo apt install -y python3-picamera python3-pil python3-tk python3-numpy ffmpeg
+   sudo apt install -y python3-picamera python3-pil python3-pil.imagetk python3-tk python3-numpy
    ```
+   Note: Buster's `raspbian.raspberrypi.org` mirror has been retired now that
+   Buster is end-of-life, so `apt update` will show a 404 for it — that's
+   expected and safe to ignore, the packages above still come from the repos
+   that are still up.
 
 4. Clone this repo on the Pi:
    ```
@@ -48,7 +52,12 @@ python3 src/camera_app.py
 
 Or open `src/camera_app.py` in Thonny and press Run.
 
-Captured photos and videos are saved to the `captures/` folder.
+Captured photos are saved as `.jpg` and videos as raw `.h264` in the
+`captures/` folder. `.h264` files play fine in VLC; if you need `.mp4`
+files, convert them later on a machine with a working `ffmpeg` install:
+```
+ffmpeg -r 30 -i video.h264 -c copy video.mp4
+```
 
 ## Workflow
 
