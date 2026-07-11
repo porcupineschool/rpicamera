@@ -6,6 +6,7 @@ Uses the legacy `picamera` (v1) library, for Raspberry Pi OS versions
 
 import io
 import os
+import time
 from datetime import datetime
 from tkinter import Tk, Frame, Label, Button, Entry, StringVar, messagebox
 
@@ -37,6 +38,7 @@ class CameraApp:
         self.recording = False
         self.preview_job = None
         self.video_path = None
+        self.manual_exposure = False
 
         self.preview_label = Label(root)
         self.preview_label.pack()
@@ -109,7 +111,10 @@ class CameraApp:
         self.status_var.set("Capturing photo...")
         self.root.update_idletasks()
         try:
-            self.camera.capture(filename)
+            # A manually fixed exposure doesn't survive the sensor mode switch
+            # that a full-resolution still capture normally triggers, so stay
+            # on the video port (same stream the preview uses) instead.
+            self.camera.capture(filename, use_video_port=self.manual_exposure)
             self.status_var.set(f"Saved {os.path.basename(filename)}")
         except Exception as exc:
             messagebox.showerror("Capture failed", str(exc))
@@ -132,16 +137,28 @@ class CameraApp:
 
         try:
             if shutter_ms == 0:
-                self.camera.shutter_speed = 0
                 self.camera.exposure_mode = "auto"
+                self.camera.shutter_speed = 0
                 self.camera.framerate = DEFAULT_FRAMERATE
+                self.manual_exposure = False
                 self.status_var.set("Exposure set to auto")
             else:
                 shutter_us = shutter_ms * 1000
                 # framerate must be slow enough to allow this shutter speed
                 self.camera.framerate = min(DEFAULT_FRAMERATE, 1_000_000 / shutter_us)
+                self.camera.exposure_mode = "auto"
                 self.camera.shutter_speed = shutter_us
+
+                # Give the auto-exposure algorithm time to adapt its gain to
+                # the new shutter speed before locking it in — otherwise the
+                # gain from the previous (often much faster) shutter speed
+                # gets frozen in place and photos come out black.
+                self.status_var.set("Adjusting exposure, please wait...")
+                self.root.update_idletasks()
+                time.sleep(max(1.0, (shutter_us / 1_000_000) * 3))
+
                 self.camera.exposure_mode = "off"
+                self.manual_exposure = True
                 self.status_var.set(f"Exposure set to {shutter_ms}ms (preview will update more slowly)")
         except Exception as exc:
             messagebox.showerror("Failed to set exposure", str(exc))

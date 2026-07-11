@@ -58,6 +58,14 @@ down to match (physically, a 2-second exposure can't refresh 10 times a
 second), so preview responsiveness drops while a long exposure is active.
 Set it back to 0 and Apply to return to auto-exposure.
 
+Clicking Apply with a non-zero value briefly freezes the app (a few seconds,
+longer for longer exposures) while it lets the sensor adjust to the new
+exposure before locking it in — this is required for the shutter speed to
+actually take effect correctly, not a bug. Photos taken with a manual
+exposure are captured at the preview resolution (640x480) rather than full
+sensor resolution, since a full-resolution still capture would reset the
+manually fixed exposure.
+
 Captured photos are saved as `.jpg` and videos as raw `.h264` in the
 `captures/` folder. `.h264` files play fine in VLC; if you need `.mp4`
 files, convert them later on a machine with a working `ffmpeg` install:
